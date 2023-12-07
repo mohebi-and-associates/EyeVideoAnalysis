@@ -8,7 +8,7 @@ Additionally, cropped versions of labelled videos can be generated to focus more
 ## Installation and Use
 
 1) Create a conda environment supplied for DeepLabCut following the instructions here: https://deeplabcut.github.io/DeepLabCut/docs/installation.html
-2) Download the DeepLabCut model from here: 
+2) Download the DeepLabCut model from here: https://doi.org/10.25377/sussex.24072354.v1
 3) Clone this repository
 4) Fill out details of videos to be analysed in the pupil_config file
 5) Set 4 paths in user_defs (for raw database, processed database, DLC model path, pupil_config file path)
