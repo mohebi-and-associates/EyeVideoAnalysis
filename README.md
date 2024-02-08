@@ -1,21 +1,172 @@
 # EyeVideoAnalysis
-Analysis output of trained DeepLabCut (DLC) model to detect pupil position, size, and blinks.
+This code can be used to detect the edges of the pupil in videos of the eye (or face) of a mouse. The code runs a trained DeepLabCut (DLC) neural network model on the provided videos to automatically detect the edges of the pupil, the edges of the eye lid, and the tip of the nose (if present). The code then uses the location of these markers to determie pupil diameter, pupil center, and times when the pupil is obstructed, e.g., when the mouse blinks. The diagram below summarizes the workflow of EyeVideoAnalysis.
 
-This code will analyse the videos with the DeepLabCut model which gives an output of coordinates of each marker around the pupil (4) and the eye (4) + nose (1). Then those markers are used to estimate the pupil diameter throughout the video accounting for blinks and cases where DLC output is not certain enough. 
-Optionally, DLC can provide plots and labelled video that can be used to evaluate the quality of video analysis. 
-Additionally, cropped versions of labelled videos can be generated to focus more on the eye area. 
+![Blank diagram (3)](https://github.com/Schroeder-Lab/EyeVideoAnalysis/assets/113594054/fff68445-f671-4054-8ebe-9fe2b21c2810)
+
+The analysis begins with the configuration settings (`pupil_analysis_config.csv`) that describe the details of raw video input and analysis tasks to be performed. The `main_pupil.py` script orchestrates a sequence of analysis tasks. The first step involves analyzing the videos to extract x,y coordinates of markers placed around the pupil, eye, and nose, which are then used to measure the pupil's diameter while accounting for blinks or uncertain data points. The workflow can optionally generate plots and labeled videos for quality evaluation, as well as create cropped versions of the videos for a more detailed visualization of parts of the video, e.g., the area around the eye. The outputs of this process provide comprehensive tools for pupil tracking analysis.
+
+## Table of Contents
+- [Installation and Use](#installation-and-use)
+- [DLC Model Description](#dlc-model-description)
+  - [DLC Workflow Overview](#dlc-workflow-overview)
+  - [Markers](#markers)
+  - [Model Training Specs](#model-training-specs)
+- [Code Overview](#code-overview)
+  - [pupil_analysis_config.csv](#pupil_analysis_configcsv)
+  - [user_defs.py](#user_defspy)
+  - [main_pupil.py](#main_pupilpy)
+  - [analyse_videos.py](#analyse_videospy)
+  - [measure_pupil.py](#measure_pupilpy)
+  - [crop_videos.py](#crop_videospy)
+- [Credits](#credits)
 
 ## Installation and Use
 
-1) Create a conda environment supplied for DeepLabCut following the instructions here: https://deeplabcut.github.io/DeepLabCut/docs/installation.html
-2) Download the DeepLabCut model from here: https://doi.org/10.25377/sussex.24072354.v1
-3) Clone this repository
-4) Fill out details of videos to be analysed in the pupil_config file
-5) Set 4 paths in user_defs (for raw database, processed database, DLC model path, pupil_config file path)
-6) Run main_pupil in the DLC environment
-7) Set ROIs if crop_videos is set to TRUE in pupil_config file
-8) Check videos and start data analysis!
+1. Install DeepLabCut (DLC) in a DLC conda environment following the instructions here: [DeepLabCut Installation](https://deeplabcut.github.io/DeepLabCut/docs/installation.html).
+2. Download the DeepLabCut model to detect the pupil from here: [DLC Model Download](https://doi.org/10.25377/sussex.24072354.v1). See [DLC Model Description](#dlc-model-description) below for more details about how this model was trained using the DLC toolbox.
+3. Clone the current (EyeVideoAnalysis) repository.
+4. Fill out details of videos to be analyzed as well as desired analysis tasks in the `pupil_analysis_config.csv` file. See [pupil_analysis_config.csv](#pupil_analysis_configcsv) below for more details.
+5. Set 4 paths in `user_defs` (for raw database, processed database, DLC model path, `pupil_analysis_config.csv` file path). See [user_defs.py](#user_defspy) below for more details about the format or follow instructions in docstrings within the `user_defs.py` code.
+6. Run `main_pupil.py` in the DLC conda environment that was created in step 1. For more information about the code's functionality, refer to the [main_pupil.py](#main_pupilpy) section for an overview, and the [analyse_videos.py](#analyse_videospy), [measure_pupil.py](#measure_pupilpy), and [crop_videos.py](#crop_videospy) sections for detailed descriptions of the code.
+7. If `crop_videos` is set to `TRUE` in the `pupil_analysis_config.csv` file, the first action upon running the code is to define the Regions of Interest (ROIs) for cropping each video. A window displaying the original video will appear, prompting you to set the ROI by selecting the top-left and bottom-right corners of the desired rectangular area. To cancel a selection, right-click the mouse. Once satisfied with the selection, press the 'Esc' key to confirm. This process will repeat for each video marked for cropping, where you must define an ROI for each one in sequence.
+8. Check labeled videos. If the marker locations are not satisfactory, the model can be re-trained, trained further or refined following the instructions in the official [DLC implementation](https://deeplabcut.github.io/DeepLabCut/docs/standardDeepLabCut_UserGuide.html).
+9. The output files are generated in the following format and in the following directories:
+   - `processed database/name/date/pupil/dlc/exp_number` contains DLC output files including labeled videos, files (csv, h5) with marker coordinates and likelihood, and plot-poses folder with 4 plots generated by DLC for marker trajectory evaluation.
+   - `processed database/name/date/pupil/xyPos_diameter/exp_number` contains pupil measurement output files including `eye.diameter.npy`, `eye.xyPos.npy`, and `xyPos_diameter_blinks.png` (plot).
 
+## DLC Model Description
+
+The neural network model for eye tracking is trained and used with the help of DeepLabCut (DLC) toolbox. DLC is a versatile machine learning framework that enables researchers to track and analyze body movements in videos, including fine-grained tasks like eye tracking. More details can be found on the Github page of DeepLabCut (https://github.com/DeepLabCut).  
+
+### DLC Workflow Overview
+
+- **Model Pre-Training**: DLC models are pre-trained on extensive datasets like ImageNet using advanced neural network architectures. This gives them a strong foundation in recognizing diverse patterns and features in visual data.
+- **Fine-Tuning for Specific Tasks**: This pre-trained DLC model needs to be further trained, or fine-tuned on a custom dataset in order to be used for specific detection task. This involved training the model with labelled images of the mouse videos (discussed more below in section “Markers”) to identify pupil positions accurately. This step tailors the general capabilities of the model to the specific nuances of pupil tracking.
+- **Model Evaluation and Inference**: The fine-tuned model was evaluated to ensure precise pupil detection. It can now be used to run inference on new video data, automating the process of eye tracking.
+![Screenshot 2024-01-05 at 18 24 44](https://github.com/Schroeder-Lab/EyeVideoAnalysis/assets/113594054/b4084512-1f50-4ba9-bcdb-889b149f2a7d)
+
+### Markers
+
+The model uses specific markers placed on key landmarks around the eye and the nose. Below is an image illustrating these markers:
+![Screenshot 2024-01-05 at 17 02 02](https://github.com/Schroeder-Lab/EyeVideoAnalysis/assets/113594054/b5f7bb79-84e1-4242-847c-8e7703de61c8)
+Markers were placed based on the visibility and distinctness of the landmarks. In cases where a landmark's edge is obscured or not discernible, such as under intense light or occlusion, the marker was not placed. 
+
+### Model training specs
+
+Overall, the training was performed using ~1000 images from ~30 videos where the camera position and lighting conditions varied. 440000 iterations were performed during training. Below is an image showing examples of some of the training data (unlabeled).
+![Blank diagram (2)](https://github.com/Schroeder-Lab/EyeVideoAnalysis/assets/113594054/0659ddcf-3743-4c15-8eb3-276ff3f39b4b)
+
+## Code Overview
+
+### pupil_analysis_config.csv
+
+This CSV file is crucial for the analysis as it contains the configuration settings for each experiment to be processed. It outlines which videos to analyze, which ones to plot, whether to perform pupil measurements, and if videos should be cropped to a specific region of interest (ROI).
+
+**Columns**:
+
+- **name**: Name of the subject or the experiment.
+- **date**: Date of the experiment, in YYYY-MM-DD format.
+- **exp_number**: Experiment number or identifier. This can specify one or multiple experiments, or "all" for all experiments.
+- **analyze_video**: Boolean flag indicating whether the video should be analysed (TRUE/FALSE).
+- **plot_trajectories**: Boolean flag indicating whether markers’ trajectories should be plotted (TRUE/FALSE). Using x,y coordinates and likelihood of each marker, 4 plots are generated by DLC.
+- **create_video**: Boolean flag indicating whether to create a video with labeled data (TRUE/FALSE).
+- **measure_pupil**: Boolean flag indicating whether pupil measurements (diameter, centre, blinks) should be performed (TRUE/FALSE).
+- **crop_videos**: Boolean flag indicating whether videos should be cropped to the ROI (TRUE/FALSE).
+---
+### user_defs.py
+
+Defines user-specific paths and settings required for data analysis. It contains a single function called `define_directories` within which users must provide paths for several directories:
+
+- **CSV Directory**: Location of the configuration CSV file that contains video analysis settings.
+- **Raw Data Base Folder**: The base directory where raw experimental videos are stored.
+- **Processed Data Base Folder**: The directory where processed data, including DLC output and pupil measurements, will be saved.
+- **Processed Labeled Video Folder**: The directory where the labeled video generated by DLC can be stored in. It can be the same as previous folder. This is useful in case you don’t want to store the videos permanently on the server.
+- **DLC Model Directory**: The path to the trained DLC model for pupil analysis.
+---
+### main_pupil.py
+
+The `main_pupil.py` script is the central execution point for the EyeVideoAnalysis pipeline. It leverages functions from other scripts such as `user_defs`, `analyse_videos`, `measure_pupil`, and `crop_videos` to carry out the analysis sequence as defined by the user in the configuration file.
+
+**Workflow Summary:**
+
+- **Directory Setup**: Initializes the directory paths needed for the workflow by invoking the `define_directories` function from `user_defs`.
+- **Database Loading**: Reads the CSV configuration file to determine which videos require analysis, pupil measurement, and cropping.
+- **DLC Analysis**: For each video flagged for analysis, the script sets up DLC operations, including video analysis, trajectory plotting, and labeled video creation. This gives an output in the processed database directory of:
+    1) files (csv, h5) with marker coordinates and likelihood
+    2) labeled video. the original video with 9 markers overlaid on top
+- **Pupil Measurement**: If pupil measurement is enabled, the script processes the raw DLC output to calculate pupil dimensions and positions, and adjusts for blinks. See section [measure_pupil.py](#measure_pupilpy) for more details about the algorithm. This gives an output in the form of: 
+    1) diameter values per frame of the video. Frames in which blinks occurred diameter values are set to NaN.
+    2) x,y coordinates of the centre per frame with blinks set to NaN.
+    3) trace plot of diameter and x,y centre coordinates with grey shades bars representing frames where blinks occurred:
+
+  ![image](https://github.com/Schroeder-Lab/EyeVideoAnalysis/assets/113594054/da601c6b-0e51-4d56-bd74-79838eec725e)
+
+- **Video Cropping**: If video cropping is enabled, the script reads the ROI coordinates that were chosen by the user when prompted at the beginning of the analysis pipeline. Then each video is processed and and the cropped versions of the videos are saved in the same folder as the original labelled video.
+---
+### analyse_videos.py:
+
+This script is integral to the initial stages of the workflow, preparing the groundwork for subsequent video analysis with DLC. It sets up the necessary directory paths and configurations which are used later by `main_pupil.py`.
+
+**Functionality:**
+
+- `read_dataentry_produce_video_dirs`: Parses individual entries from a configuration CSV, such as video names, dates, and experiment numbers, to determine which videos will undergo analysis.
+- `produce_directories`: Generates directory paths where analysis outputs will be saved, such as paths for storing videos, plotting trajectories, and creating labeled videos.
+- `create_dlc_ops`: Establishes the foundational settings for DLC operations, such as output directory paths and model configuration, to be used by `main_pupil.py` for the actual DLC processing.
+
+**Usage:**
+
+The `analyse_videos.py` script's functions are called by `main_pupil.py` as part of the analysis pipeline.
+
+---
+### measure_pupil.py:
+
+This script is the core of the eye tracking analysis. It processes video data to extract and quantify pupil dimensions and position, accounting for instances of blinks and other occlusions. It is invoked by `main_pupil.py`
+
+**Functionality:** 
+
+- `read_dataentry_produce_directories`: Reads configuration details and prepares directories for processing.
+- `produce_directories`: Identifies the file paths necessary for pupil analysis based on experiment details.
+- `process_raw_data`: Processes raw DLC output, calculating pupil width, height, and center, and determines valid data points based on a minimum certainty threshold.
+- `estimate_height_from_width_pos`: Interpolates pupil height from width and position data when direct measurements are unreliable.
+- `adjust_center_height`: Adjusts pupil center height based on interpolated data, particularly during instances when markers are obscured or uncertain.
+- `detect_blinks`: Identifies instances of blinks within the video data and adjusts measurements accordingly.
+- `apply_medfilt`: Applies a median filter to smooth the trajectory of the pupil's center and diameter over time.
+- `adjust_for_blinks`: Processes the pupil data to account for blinks, setting the appropriate values to NaN.
+- `plot_and_save_data`: Generates visual plots of the pupil data and saves both the plots and the processed data in structured directories.
+
+**Algorithm Overview:**
+
+The diagram below illustrates the algorithmic steps implemented within the functions of `measure_pupil` to determine the pupil's diameter and handle instances such as blinks or occlusions.
+![Screenshot 2024-01-05 at 17 14 04](https://github.com/Schroeder-Lab/EyeVideoAnalysis/assets/113594054/bbe49e51-c31d-4bd9-8fde-0593a5a3b20c)
+The workflow is as follows:
+
+1. **Diameter Calculation**: The size of the pupil is determined by its diameter. Initially, it is  calculated as the vertical distance (y coordinates) between the bottom and top markers placed on the pupil (labeled as "Diameter = height = Bottom pupil - Top pupil" in the diagram).
+2. **Conditions for Height (Diameter) Interpolation**:
+   - If the top and/or bottom pupil markers are unreliable (low likelihood) or are too close to the eyelids, direct measurement of the diameter may be inaccurate.
+   - When direct measurement is compromised by either of the above conditions, the height (and thus the diameter) of the pupil is estimated using interpolation. Interpolation is based on the width of the pupil (difference between x-coordinates of right and left marker) and the x-coordinate of the pupil's centre.
+3. **Blink Identification**:
+   - Blinks are identified by a separate set of conditions, related to the proximity of eyelid markers to the pupil and the reliability of those markers as shown in the diagram.
+   - The frames where blinks are detected are marked with `NaN` to signify that the data for these frames should be treated as missing.
+   - 5 frames surrounding the identified blinks are also marked as `NaN` to ensure the blink's full duration is accounted for.
+---
+### crop_videos.py
+
+This script is invoked by `main_pupil.py` and is used for video preprocessing and region of interest (ROI) selection. It includes functions for reading configurations, selecting ROIs, saving these ROIs, and processing videos according to these ROIs.
+
+**Functionality**:
+
+- `read_dataentry_produce_directories`: Gathers the necessary directory paths for the videos to be processed based on the experiment configuration.
+- `produce_directories`: Constructs the file paths where the processed videos and output will be stored.
+- `select_roi`: Allows users to manually select an ROI on a video frame which is then used for cropping during analysis.
+- `save_roi_to_file`: Saves the selected ROI coordinates to a JSON file within the specified directory structure.
+- `read_roi_coordinates_from_dlc_folder`: Retrieves saved ROI coordinates from a JSON file for use in video processing.
+- `process_video`: Crops the video to the specified ROI, applies DLC analysis markers, and saves the processed video to the specified output directory.
+
+**Usage**:
+This script does not need to be run independently. `main_pupil.py` script utilizes its functions to ensure videos are cropped to the selected ROI before conducting analysis with DLC markers.
+
+**ROI Selection and Video Processing**:
+The ROI selection is critical for focusing the analysis on the eye area, enhancing the accuracy of pupil tracking. The subsequent video processing step overlays DLC markers on the cropped video, providing visual feedback for the analysis performed.
 
 ## Credits
 The code for measure_pupil was adapted from Sylvia Schroeder's work: https://github.com/sylviaschroeder/PupilDetection_DLC 
