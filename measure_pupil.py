@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 from scipy.interpolate import SmoothBivariateSpline
 from scipy.signal import medfilt
+import cv2
+import deeplabcut
 
 #%% Load data 
 
@@ -15,7 +17,6 @@ MIN_CERTAINTY = 0.6
 
 def read_dataentry_produce_directories(dataEntry, destBaseFolder):
     
-
     """
     Parses a single data entry from the configuration CSV and invokes the produce_directories function.
     
@@ -544,10 +545,10 @@ def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, destBaseFol
     names = ['center x', 'center y', 'diameter']
     
     # Create destination folder for pupil diameter files: 
-    
+        
     session_folder = os.path.basename(os.path.dirname(file_path))
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(file_path)))
-    
+
     # Create the new directory
     measure_pupil_folder = os.path.join(base_dir, "xyPos_diameter", session_folder)
     if not os.path.exists(measure_pupil_folder):
@@ -590,4 +591,126 @@ def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, destBaseFol
     # Save the plot
     plt.savefig(os.path.join(measure_pupil_folder, "xyPos_diameter_blinks.png"))
 
+
+#%% convert diameter pixel values to mm
+
+def analyse_HH_video(eye_video_path, destBaseFolder, hh_model_path, num_frames=10):
+    """
+    Performs the entire workflow of creating a directory, extracting random frames,
+    analyzing them with DeepLabCut, and creating labeled images, all within a single encapsulated function.
+    
+    Parameters:
+    - eye_video_path: Full path to the video file.
+    - destBaseFolder: Base directory for processed data output.
+    - hh_model_path: Path to the HeadplateHolder DeepLabCut model directory.
+    - num_frames: Number of random frames to extract and analyze.
+    """
+    def create_video_frames_folder():
+        """
+        Creates a directory for storing video frame analysis files based on the structure derived from 
+        the eye_video_path and appends a specified subdirectory structure before the final folder.
+        
+        Parameters:
+        - eye_video_path: The full path to the original video file.
+        - destBaseFolder: The base directory where the structured output folder should be created.
+
+        Returns:
+        - The path to the newly created video frames folder.
+        """
+        
+        # Extract the relevant parts from eye_video_path (e.g., Elias\2022-08-03\1)
+        path_parts = eye_video_path.split(os.sep)
+        relevant_path_parts = path_parts[-4:-1]  # Assumes the structure is always like Z:\RawData\Elias\2022-08-03\1\Video0.avi
+
+        # Construct the new folder path by appending the relevant path to destBaseFolder
+        # and adding "pupil\xyPos_diameter\" before the final part (e.g., "1")
+        new_folder_path = os.path.join(destBaseFolder, *relevant_path_parts[:-1], "pupil", "xyPos_diameter", relevant_path_parts[-1], "HeadplateHolder_files")
+
+        # Create the directory if it doesn't exist
+        if not os.path.exists(new_folder_path):
+            os.makedirs(new_folder_path)
+        
+        return new_folder_path
+
+    
+    def extract_random_frames(video_frames_folder):
+        """
+        Extracts a specified number of random frames from the video and saves them in the created folder.
+        """
+        cap = cv2.VideoCapture(eye_video_path)
+        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_indices = sorted(np.random.choice(length, num_frames, replace=False))
+        for i, frame_index in enumerate(frame_indices):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            ret, frame = cap.read()
+            if ret:
+                frame_path = os.path.join(video_frames_folder, f"frame_{frame_index}.png")
+                cv2.imwrite(frame_path, frame)
+        cap.release()
+    
+    def analyze_frames_with_dlc(video_frames_folder):
+        """
+        Analyzes the saved frames using DeepLabCut's analyze_time_lapse_frames function.
+        """
+        config_path = os.path.join(hh_model_path, 'config.yaml')
+        deeplabcut.analyze_time_lapse_frames(config_path, video_frames_folder, frametype='.png', shuffle=1, trainingsetindex=0, gputouse=None, save_as_csv=True)
+    
+    def create_labeled_images(video_frames_folder):
+        csv_file_path = glob.glob(os.path.join(video_frames_folder, "*.csv"))[0]  # Takes the first match
+        dlc_csv_file = pd.read_csv(csv_file_path, header=[1, 2], index_col=0)
+        
+        for index, row in dlc_csv_file.iterrows():
+            frame_path = os.path.join(video_frames_folder, index)
+            frame = cv2.imread(frame_path)
+            if frame is not None:
+                # Draw keypoints
+                for bodypart in dlc_csv_file.columns.levels[0]:
+                    x, y = row[(bodypart, 'x')], row[(bodypart, 'y')]
+                    likelihood = row[(bodypart, 'likelihood')]
+                    if likelihood > 0.6:  # You can adjust this threshold
+                        cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+    
+                # Save the labeled frame
+                output_path = os.path.join(video_frames_folder, index)
+                cv2.imwrite(output_path, frame)
+    
+    def calculate_scale_mm_per_pixel(video_frames_folder,eye_video_path,destBaseFolder):
+        csv_file_path = glob.glob(os.path.join(video_frames_folder, "*.csv"))[0]
+        dlc_csv_file = pd.read_csv(csv_file_path, header=[1, 2], index_col=0)
+
+        # Calculate the median of x and y coordinates for 'top' and 'bottom'
+        median_top_x = dlc_csv_file[('top', 'x')].median()
+        median_top_y = dlc_csv_file[('top', 'y')].median()
+        median_bottom_x = dlc_csv_file[('bottom', 'x')].median()
+        median_bottom_y = dlc_csv_file[('bottom', 'y')].median()
+        
+        std_top_x = dlc_csv_file[('top', 'x')].std()
+        std_top_y = dlc_csv_file[('top', 'y')].std()
+        std_bottom_x = dlc_csv_file[('bottom', 'x')].std()
+        std_bottom_y = dlc_csv_file[('bottom', 'y')].std()
+        #TODO: do we still need this std?
+        
+        # Calculate the distance based on the median values
+        hh_median_distance = np.sqrt((median_bottom_x - median_top_x)**2 + (median_bottom_y - median_top_y)**2)
+        
+        hh_actual_size_mm = 4
+        
+        scale_mm_per_pixel = hh_actual_size_mm / hh_median_distance
+        path_parts = eye_video_path.split(os.sep)
+        relevant_path_parts = path_parts[-4:-1]  # Assumes the structure is always like Z:\RawData\Elias\2022-08-03\1\Video0.avi
+    
+            # Construct the new folder path by appending the relevant path to destBaseFolder
+            # and adding "pupil\xyPos_diameter\" before the final part (e.g., "1")
+        measure_pupil_path = os.path.join(destBaseFolder, *relevant_path_parts[:-1], "pupil", "xyPos_diameter", relevant_path_parts[-1])
+        scale_file_path = os.path.join(measure_pupil_path, "eyeVideo.mmPerPixel.npy") # mm/pixel
+    
+        # Save the scale value to a .npy file
+        np.save(scale_file_path, np.array([scale_mm_per_pixel]))
+    # Execute the workflow
+    video_frames_folder = create_video_frames_folder()
+    extract_random_frames(video_frames_folder)
+    analyze_frames_with_dlc(video_frames_folder)
+    create_labeled_images(video_frames_folder)
+    calculate_scale_mm_per_pixel(video_frames_folder,eye_video_path,destBaseFolder)
+    print("Analysis complete.")
 

@@ -7,6 +7,7 @@ import deeplabcut
 import pandas as pd
 import glob
 import re
+import shutil
 
 
 #%%  
@@ -74,16 +75,23 @@ def produce_directories(name, date, exp_numbers, analyze_video, plot_trajectorie
         if exp_number.strip().lower() == "all":
             folder_path = os.path.join(rawDataBaseFolder, name, date)
             eye_avi_files = glob.glob(os.path.join(folder_path, "*", "*.avi"))
+            print(f"Looking in folder: {folder_path}")
+            print(f"Found files: {eye_avi_files}")
         else:
             folder_path = os.path.join(rawDataBaseFolder, name, date, exp_number.strip())
             eye_avi_files = glob.glob(os.path.join(folder_path, "*.avi"))
-    
+            print(f"Looking in folder: {folder_path}")
+            print(f"Found files: {eye_avi_files}")
+
         for file in eye_avi_files:
-            match = re.match(r"Video(\d)\.avi", os.path.basename(file))
+            match = re.match(r"Video(\d)\.avi", os.path.basename(file)) #if the videofile name is Video# where # is a number
+            # match = re.match(r"Video(\d+).*\.avi", os.path.basename(file)) # if the name of the file is not simply Video#
+
             if match:
-                digit = int(match.group(1))
-                if digit >= 0 and digit <= 9:
+                digit = int(match.group(1)) #if the videofile name is Video# where # is a number
+                if digit >= 0 and digit <= 9: 
                     eyeVideoPaths.append(file)
+                
     print("eyeVideoPaths:", eyeVideoPaths)
     if not eyeVideoPaths:
         raise ValueError("No eye video files found in the directories.")
@@ -98,9 +106,12 @@ def produce_directories(name, date, exp_numbers, analyze_video, plot_trajectorie
 
     return name, date, exp_numbers, eyeVideoPaths, plot_videos, create_videos
 
+#TODO: modify docstrings
 
-def create_dlc_ops(eye_video_path, destBaseFolder, rawDataBaseFolder, model_path):
 
+def create_dlc_ops(eye_video_path, destBaseFolder, videoDestBaseFolder, rawDataBaseFolder, model_path, create_video=False):
+    shuffle = 1
+    config = os.path.join(model_path, 'config.yaml') 
     """
 
     This function constructs a 'dlc' sub-directory within a destination folder based on the relative path of 
@@ -113,6 +124,8 @@ def create_dlc_ops(eye_video_path, destBaseFolder, rawDataBaseFolder, model_path
         The path to the video file that will be analyzed using the DLC model.
     destBaseFolder : str
         The base folder where the processed data and results will be stored.
+    videoDestBaseFolder: str
+        The base folder where the labelled and cropped DLC videos will be stored 
     rawDataBaseFolder : str
         The base folder where the raw data videos are stored.
     model_path : str
@@ -122,29 +135,48 @@ def create_dlc_ops(eye_video_path, destBaseFolder, rawDataBaseFolder, model_path
     -------
     dlc_folder : str
         The path to the newly created sub-folder within the destination folder, dedicated to DLC output files.
+    dlc_video_folder: str 
+        The path to the folder within the destination folder for DLC videos.
     shuffle : int
         The shuffle parameter used in DLC operations.
     config : str
         The path to the DeepLabCut model configuration file.
     """
-    
-    shuffle = 1
-    config = os.path.join(model_path,'config.yaml') 
 
-    # Create the new destination folder structure
     rel_path = os.path.relpath(eye_video_path, rawDataBaseFolder)
-
-    # Extract the folder number (it's the parent directory of the video file)
     folder_number = os.path.basename(os.path.dirname(rel_path))
-
-    # Construct the destination folder without the folder number
     dest_folder_elements = os.path.dirname(rel_path).split(os.sep)[:-1]
     dest_folder = os.path.join(destBaseFolder, *dest_folder_elements)
-
     dlc_folder = os.path.join(dest_folder, "pupil", "dlc", folder_number)
+    
+    # Initialize dlc_video_folder
+    dlc_video_folder = None  # or dlc_folder if you want it to default to dlc_folder
 
-    # Create the folder if it doesn't exist
+    if create_video and videoDestBaseFolder:
+        dest_video_folder = os.path.join(videoDestBaseFolder, *dest_folder_elements)
+        dlc_video_folder = os.path.join(dest_video_folder, "pupil", "dlc", folder_number)
+
+        if not os.path.exists(dlc_video_folder):
+            os.makedirs(dlc_video_folder)
+
+    # Create the dlc_folder if it doesn't exist
     if not os.path.exists(dlc_folder):
         os.makedirs(dlc_folder)
 
-    return dlc_folder, shuffle, config 
+    return dlc_folder, dlc_video_folder, shuffle, config
+
+def copy_non_video_files(src_folder, dst_folder):
+    for item in os.listdir(src_folder):
+        src_path = os.path.join(src_folder, item)
+        dst_path = os.path.join(dst_folder, item)
+
+        # Skip the roi_coordinates.json file
+        if item == 'roi_coordinates.json':
+            continue
+
+        if os.path.isdir(src_path):
+            if not os.path.exists(dst_path):
+                shutil.copytree(src_path, dst_path, dirs_exist_ok=True)  # For directories
+        elif not src_path.endswith('.mp4'):  # Copy if not an MP4 file
+            if not os.path.exists(dst_path):
+                shutil.copy2(src_path, dst_path)

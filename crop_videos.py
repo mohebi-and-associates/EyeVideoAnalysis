@@ -177,10 +177,8 @@ def select_roi(video_pathname, filepath='roi_coordinates.json'):
         print("ROI coordinates were not selected.")
         return None
     
-    
-    
-    
-def save_roi_to_file(roi_coordinates, eye_video_path, destBaseFolder, rawDataBaseFolder, filepath='roi_coordinates.json'):
+
+def save_roi_to_file(roi_coordinates, eye_video_path, videoDestBaseFolder, rawDataBaseFolder, filepath='roi_coordinates.json'):
 
     """
 
@@ -214,12 +212,12 @@ def save_roi_to_file(roi_coordinates, eye_video_path, destBaseFolder, rawDataBas
 
     # Construct the destination folder without the folder number
     dest_folder_elements = os.path.dirname(rel_path).split(os.sep)[:-1]
-    dest_folder = os.path.join(destBaseFolder, *dest_folder_elements)
+    dest_folder = os.path.join(videoDestBaseFolder, *dest_folder_elements)
 
-    dlc_folder = os.path.join(dest_folder, "pupil", "dlc", folder_number)
-    if not os.path.exists(dlc_folder):
-        os.makedirs(dlc_folder)
-    filepath = os.path.join(dlc_folder, filepath)
+    dlc_video_folder = os.path.join(dest_folder, "pupil", "dlc", folder_number)
+    if not os.path.exists(dlc_video_folder):
+        os.makedirs(dlc_video_folder)
+    filepath = os.path.join(dlc_video_folder, filepath)
     with open(filepath, 'w') as f:
         json.dump(roi_coordinates, f) 
     return roi_coordinates
@@ -227,7 +225,7 @@ def save_roi_to_file(roi_coordinates, eye_video_path, destBaseFolder, rawDataBas
 
 
 
-def read_roi_coordinates_from_dlc_folder(eye_video_path, destBaseFolder, rawDataBaseFolder):
+def read_roi_coordinates_from_dlc_folder(eye_video_path, videoDestBaseFolder, rawDataBaseFolder):
     
     
     """
@@ -251,12 +249,12 @@ def read_roi_coordinates_from_dlc_folder(eye_video_path, destBaseFolder, rawData
 
     # Construct the destination folder without the folder number
     dest_folder_elements = os.path.dirname(rel_path).split(os.sep)[:-1]
-    dest_folder = os.path.join(destBaseFolder, *dest_folder_elements)
+    dest_folder = os.path.join(videoDestBaseFolder, *dest_folder_elements) 
 
-    dlc_folder = os.path.join(dest_folder, "pupil", "dlc", folder_number)
+    dlc_video_folder = os.path.join(dest_folder, "pupil", "dlc", folder_number)
     
     # Construct the path to the roi_coordinates.json file
-    roi_filepath = os.path.join(dlc_folder, 'roi_coordinates.json')
+    roi_filepath = os.path.join(dlc_video_folder, 'roi_coordinates.json')
     
     try:
         # Read roi_coordinates from the JSON file
@@ -274,7 +272,7 @@ def read_roi_coordinates_from_dlc_folder(eye_video_path, destBaseFolder, rawData
 
 
 
-def process_video(video_pathname, roi_coordinates, dlc_folder):
+def process_video(video_pathname, roi_coordinates, dlc_video_folder):
         
     """
 
@@ -298,10 +296,10 @@ def process_video(video_pathname, roi_coordinates, dlc_folder):
     """
     
        
-    dlc_csv_path = glob.glob(os.path.join(dlc_folder, "*.csv"))[0]
+    dlc_csv_path = glob.glob(os.path.join(dlc_video_folder, "*.csv"))[0]
     video_basename_without_extension = os.path.splitext(os.path.basename(video_pathname))[0]    
     output_video_name = f"{video_basename_without_extension}_cropped.avi"
-    output_path = os.path.join(dlc_folder, output_video_name)
+    output_path = os.path.join(dlc_video_folder, output_video_name)
 
     cap = cv2.VideoCapture(video_pathname)
     if not cap.isOpened():

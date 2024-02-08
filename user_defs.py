@@ -20,15 +20,23 @@ def define_directories():
     }
     """
     directoryDb = {
-        # "dataDefFile": "D:\\preprocessBoutons.csv",
-        # "preprocessedDataDir": "Z:/ProcessedData/",
-        # "zstackDir": "Z:\\RawData\\",
-        # "metadataDir": "Z:\\RawData\\",
-        'model_path': r"C:\Users\Experimenter\Deeplabcut_files\MousePupil-SchroederLab-2023-08-02",
-        'csvDir': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\pupil_analysis_config.csv",
+
+        
+        
+        # 'model_path': r"C:\Users\Experimenter\Deeplabcut_files\MousePupil-SchroederLab-2023-08-02",
+        # 'csvDir': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\pupil_analysis_config.csv",
+        # 'rawDataBaseFolder': r"Z:\RawData",
+        # 'destBaseFolder': r"Z:\ProcessedData",
+        # 'videoDestBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos"
+        
+        "DLCeyeModelDir": r"C:\\Users\\Experimenter\\Deeplabcut_files\\MousePupil-SchroederLab-2023-08-02",
+        "DLChhModelDir": r"C:\Users\Experimenter\Desktop\HeadplateHolder-SchroederLab-2024-01-29",
+        'DLCdataDefFile': r"C:\dev\workspaces\EyeVideoAnalysis\pupil_analysis_config.csv", #r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\pupil_analysis_config.csv",
         'rawDataBaseFolder': r"Z:\RawData",
-        'destBaseFolder': r"Z:\ProcessedData"
-        # 'rawDataBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\directories",
-        # 'destBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\all_pupil_videos_processed"
+        # 'rawDataBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos",
+        # 'destBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos_analysed",
+        'destBaseFolder': r"Z:\ProcessedData",
+        'videoDestBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos_analysed" #can also be set to None
+        
     }
     return directoryDb
