@@ -98,7 +98,61 @@ def produce_directories(name, date, exp_numbers, analyze_video, plot_trajectorie
         
     return pupilAnalysisFiles
 
-#%% Scatterplot with raw and valid raw data
+#%% process raw data but aggregate several videos (bellonging to the same line in pupil config) together
+
+def process_raw_data_multiple(files_paths, MIN_CERTAINTY, plot=False):
+    """
+    Processes raw data from multiple DLC CSV output files to calculate pupil width, height, 
+    and center coordinates for each file.
+   
+    Parameters
+    ----------
+    files_paths : list of str
+        Paths to the CSV files containing raw data with x, y coordinates for each marker.
+    MIN_CERTAINTY : float
+        Minimum certainty threshold for valid data points at the beginning.
+    plot : bool, optional
+        Flag to indicate if plots should be generated for each file.
+   
+    Returns
+    -------
+    aggregated_data : dict
+        A dictionary containing lists of 'dfs', 'widths', 'heights', 'center_xs', 'valids'
+        from all processed files.
+    """
+    widths = []
+    heights = []
+    center_xs = []
+    valids = []
+    
+    for file_path in files_paths:
+        df = pd.read_csv(file_path, header=[1, 2])
+        del df["bodyparts"]
+        
+        width = df[("rightpupil", "x")] - df[("leftpupil", "x")]
+        height = df[("ventralpupil", "y")] - df[("dorsalpupil", "y")]
+        center_x = df[("leftpupil", "x")] + 0.5 * width
+        valid = (df.loc[:, (slice(None), "likelihood")] > MIN_CERTAINTY).all(axis=1)
+        
+        height_valid = (df[("ventralpupil", "likelihood")] > MIN_CERTAINTY) & (df[("dorsalpupil", "likelihood")] > MIN_CERTAINTY)
+
+        
+        widths.append(width)
+        heights.append(height)
+        center_xs.append(center_x)
+        valids.append(valid)
+
+
+    aggregated_data = {
+        'widths': widths,
+        'heights': heights,
+        'center_xs': center_xs,
+        'valids': valids,
+    }
+
+    return aggregated_data
+
+#%% Scatterplot with raw and valid raw data. Process per video
 
 def process_raw_data(file_path, MIN_CERTAINTY, plot=False):
 
@@ -137,8 +191,13 @@ def process_raw_data(file_path, MIN_CERTAINTY, plot=False):
    height = df[("ventralpupil", "y")] - df[("dorsalpupil", "y")]
    center_x = df[("leftpupil", "x")] + 0.5 * width
    valid = (df.loc[:, (slice(None), "likelihood")] > MIN_CERTAINTY).all(axis=1)
+   
+   # Check if height values are valid
+   height_valid = (df[("ventralpupil", "likelihood")] > MIN_CERTAINTY) & (df[("dorsalpupil", "likelihood")] > MIN_CERTAINTY)
+        
+        
     
-   if plot:
+   if plot: 
         # Scatterplot from raw width, height, center_x with height color-coded 
         plt.figure()
         plt.scatter(center_x, width, c=height, cmap='jet')
@@ -162,45 +221,126 @@ def process_raw_data(file_path, MIN_CERTAINTY, plot=False):
 # df = process_raw_data(r"Z:\ProcessedData\FG003\2023-03-10\4\dlc\Video1DLC_resnet101_MousePupilAug2shuffle1_440000.csv", MIN_CERTAINTY, plot=False)
 
 #%% Define estimate_height_from_width_pos; plot interpolation at grid points; plot smoothed interpolation at grid points
+#interpolation based on one video
 
-def estimate_height_from_width_pos(width, height, center_x, valid, plot=False):
+# def estimate_height_from_width_pos(width, height, center_x, valid, plot=False):
+                                   
+#     """
+#     Performs a grid-based linear interpolation of height based on width and center_x coordinates, 
+#     and applies a Smooth Bivariate Spline to the interpolated data.
+   
+#     Parameters
+#     ----------
+#     width : np.array, [n,]
+#         width values.
+#     height : np.array, [n,]
+#         height values.
+#     center_x : np.array, [n,]
+#         center x-coordinates.
+#     valid : np.array, dtype=bool, [n,]
+#         valid entries across width, height, and center_x.
+#     plot : bool, optional
+#         If True, plots the interpolated and smoothed data.
+   
+#     Returns
+#     -------
+#     F : SmoothBivariateSpline object
+#         A fitted SmoothBivariateSpline object that can be used for making height predictions.
+    
+#     Notes
+#     -----
+#     This function uses SciPy's griddata for interpolation and SmoothBivariateSpline for smoothing.
+#     """
+
+#     points = np.column_stack((center_x[valid], width[valid]))
+#     values = height[valid]
+
+#     x_grid, y_grid = np.meshgrid(np.linspace(min(center_x[valid]), max(center_x[valid]), 100), np.linspace(min(width[valid]), max(width[valid]), 100))
+#     z_grid = griddata(points, values, (x_grid, y_grid), method='linear')
+
+#     ind = np.logical_not(np.isnan(np.column_stack((x_grid.flatten(), y_grid.flatten(), z_grid.flatten()))).any(axis=1))
+#     x_notnan = x_grid.flatten()[ind] 
+#     y_notnan = y_grid.flatten()[ind]
+#     z_notnan = z_grid.flatten()[ind]
+    
+#     F = SmoothBivariateSpline(x_notnan, y_notnan, z_notnan, kx=3, ky=3)
+    
+#     if plot:
+#         # Scatterplot with grid points
+#         plt.figure()
+#         plt.scatter(x_grid, y_grid, c=z_grid, cmap='jet')
+#         plt.colorbar(label='Height')
+#         plt.xlabel('CenterX')
+#         plt.ylabel('Width')
+#         plt.title('Interpolation')
+#         plt.show()
+
+#         # Scatterplot after smoothing
+#         plt.figure()
+#         z_smoothed = F.ev(x_notnan, y_notnan)
+#         plt.scatter(x_notnan, y_notnan, c=z_smoothed, cmap='jet')
+#         plt.colorbar(label='Height')
+#         plt.xlabel('CenterX')
+#         plt.ylabel('Width')
+#         plt.title('Interpolation after smoothing')
+#         plt.show()
+
+#     return F
+
+#%% interpolate over session
+
+def estimate_height_from_width_pos_all(aggregated_data, plot=False):
     """
-    Performs a grid-based linear interpolation of height based on width and center_x coordinates, 
-    and applies a Smooth Bivariate Spline to the interpolated data.
+    Performs a grid-based linear interpolation of height based on width and center_x coordinates 
+    from multiple observations contained within an aggregated data dictionary, then applies a 
+    Smooth Bivariate Spline to the interpolated data.
    
     Parameters
     ----------
-    width : np.array, [n,]
-        width values.
-    height : np.array, [n,]
-        height values.
-    center_x : np.array, [n,]
-        center x-coordinates.
-    valid : np.array, dtype=bool, [n,]
-        valid entries across width, height, and center_x.
+    aggregated_data : dict
+        A dictionary containing lists of 'widths', 'heights', 'center_xs', 'valids', each a list of np.array.
     plot : bool, optional
-        If True, plots the interpolated and smoothed data.
+        If True, plots the interpolated and smoothed data for the aggregated dataset.
    
     Returns
     -------
-    F : SmoothBivariateSpline object
-        A fitted SmoothBivariateSpline object that can be used for making height predictions.
-    
-    Notes
-    -----
-    This function uses SciPy's griddata for interpolation and SmoothBivariateSpline for smoothing.
+    F : SmoothBivariateSpline object or None
+        A fitted SmoothBivariateSpline object that can be used for making height predictions across the dataset,
+        or None if interpolation is skipped.
     """
-    points = np.column_stack((center_x[valid], width[valid]))
-    values = height[valid]
+    widths = aggregated_data['widths']
+    heights = aggregated_data['heights']
+    valids = aggregated_data['valids']
+    center_xs = aggregated_data['center_xs']
+    
+    # Check for any valid height data
+    valid_height_data_exists = any(np.array(h[v]).size > 0 for h, v in zip(heights, valids))
+    
+    if not valid_height_data_exists:
+        # Inform the user if no valid height data is found and skip interpolation
+        print("Height data not valid for the video, add more videos for interpolation. Continuing with the next video analysis")
+        return None
+    
+    # Aggregate data from all files
+    all_widths = np.concatenate([w[v] for w, v in zip(widths, valids)])
+    all_heights = np.concatenate([h[v] for h, v in zip(heights, valids)])
+    all_center_xs = np.concatenate([cx[v] for cx, v in zip(center_xs, valids)])
 
-    x_grid, y_grid = np.meshgrid(np.linspace(min(center_x[valid]), max(center_x[valid]), 100), np.linspace(min(width[valid]), max(width[valid]), 100))
+    # Perform the grid-based linear interpolation
+    points = np.column_stack((all_center_xs, all_widths))
+    values = all_heights
+
+    x_grid, y_grid = np.meshgrid(np.linspace(np.min(all_center_xs), np.max(all_center_xs), 100), 
+                                  np.linspace(np.min(all_widths), np.max(all_widths), 100))
     z_grid = griddata(points, values, (x_grid, y_grid), method='linear')
 
-    ind = np.logical_not(np.isnan(np.column_stack((x_grid.flatten(), y_grid.flatten(), z_grid.flatten()))).any(axis=1))
-    x_notnan = x_grid.flatten()[ind] 
-    y_notnan = y_grid.flatten()[ind]
-    z_notnan = z_grid.flatten()[ind]
+    # Prepare data for smoothing, removing NaNs
+    ind = np.logical_not(np.isnan(z_grid))
+    x_notnan = x_grid[ind]
+    y_notnan = y_grid[ind]
+    z_notnan = z_grid[ind]
     
+    # Smoothing
     F = SmoothBivariateSpline(x_notnan, y_notnan, z_notnan, kx=3, ky=3)
     
     if plot:
@@ -265,7 +405,7 @@ def adjust_center_height(df, F, width, height, center_x, plot=False):
         Adjusted height values based on the conditions specified.
         
     """
-
+    
     MAX_DIST_PUPIL_LID = 5  # in pixels
 
     only_bottom_valid = (df[("dorsalpupil", "likelihood")] < MIN_CERTAINTY) & (df[("ventralpupil", "likelihood")] > MIN_CERTAINTY)
@@ -278,6 +418,8 @@ def adjust_center_height(df, F, width, height, center_x, plot=False):
     
     center_y = df[("ventralpupil", "y")] - 0.5 * height 
     center_y[width_valid & only_top_valid] = df.loc[width_valid & only_top_valid, ("dorsalpupil", "y")] + 0.5 * height[width_valid & only_top_valid]
+    
+    isInterpolated_indices = ind
     
     if plot: 
         plt.figure()
@@ -296,7 +438,7 @@ def adjust_center_height(df, F, width, height, center_x, plot=False):
         plt.title('Height adjusted')
         plt.show()
     
-    return center_y, height
+    return center_y, height, isInterpolated_indices
 
 #%% Detect blinks 
 # bottom = ventral 
@@ -478,13 +620,14 @@ def adjust_for_blinks(center_x, center_y_adj, height_adj, width, blinks, plot=Tr
     diameter : ndarray
         Array of adjusted diameters, with NaNs where blinks are detected.
     """
-    data = np.column_stack((center_x, center_y_adj, height_adj))
+    center_x_adj = np.where(blinks, np.nan, center_x)
+    center_y_adj = np.where(blinks, np.nan, center_y_adj)
+    
 
-    center = [center_x, center_y_adj]
-    for i in range(len(center)):
-        if blinks[i]:
-            center[i] = (np.nan, np.nan)
     diameter = np.where(blinks, np.nan, height_adj)
+        
+    data = np.column_stack((center_x_adj, center_y_adj, diameter))
+
     if plot:
         plt.figure()
         plt.scatter(center_x, width, c = diameter, cmap='jet')
@@ -501,51 +644,104 @@ def adjust_for_blinks(center_x, center_y_adj, height_adj, width, blinks, plot=Tr
         plt.ylabel('Width')
         plt.title('After medfilt')
         plt.show() 
-    return data, center, diameter 
+    return data, [center_x_adj, center_y_adj], diameter 
 
 
-#%% Plot trace of diameter and center coordinates with blinks 
+#%% Plot trace of diameter and center coordinates with blinks - compare with the function below and delete
 
-def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, destBaseFolder):
+# def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, destBaseFolder):
     
+#     """
+#     Generates plots for eye tracking data and saves them along with the data in specified formats.
+
+#     This function creates plots from eye tracking data (center x, center y, diameter) and highlights the 
+#     periods where blinks are detected. It also saves the eye tracking data and blinks information in both 
+#     .npy and .csv formats in a structured directory.
+
+#     Parameters
+#     ----------
+#     file_path : str
+#         Path to the file containing the raw data used for generating eye tracking information.
+#     data : ndarray
+#         Array containing eye tracking data, specifically center x, center y, and diameter values.
+#     blinks : ndarray
+#         Boolean array indicating the frames where blinks are detected.
+#     bl_starts : list
+#         List containing the start frames of each blink.
+#     bl_stops : list
+#         List containing the stop frames of each blink.
+#     destBaseFolder : str
+#         Base directory where the output files and plots will be saved.
+
+#     Notes
+#     -----
+#     - The function creates a new directory within the destination folder to store the output files and plots.
+#     - The plots generated show the eye tracking data over time and mark the periods of blinks with a gray overlay.
+#     - The eye tracking data is saved in .npy format, and the data including blink information is saved in a .csv file.
+#     - The plots are saved as a single .png file showing all three metrics (center x, center y, diameter) across different subplots.
+#     """
+
+#     # Create the subplots
+#     fig, ax = plt.subplots(3, 1, figsize=(15, 12))
+
+#     # Combine the data into a single array and give it column names
+#     names = ['center x', 'center y', 'diameter']
+    
+#     # Create destination folder for pupil diameter files: 
+        
+#     session_folder = os.path.basename(os.path.dirname(file_path))
+#     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(file_path)))
+
+#     # Create the new directory
+#     measure_pupil_folder = os.path.join(base_dir, "xyPos_diameter", session_folder)
+#     if not os.path.exists(measure_pupil_folder):
+#         os.makedirs(measure_pupil_folder)
+    
+#     # Create a copy of the data accounting for blinks
+#     data_with_blinks = np.copy(data)
+#     for i in range(len(data_with_blinks)):
+#         if blinks[i]:
+#             data_with_blinks[i, :] = np.nan
+#     # Create two separate arrays for xyPos and diameter
+#     xyPos = data_with_blinks[:, :2]
+#     diameter = data_with_blinks[:, 2]
+    
+#     # Save xyPos and diameter as .npy files
+#     np.save(os.path.join(measure_pupil_folder, 'eye.xyPos.npy'), xyPos)
+#     np.save(os.path.join(measure_pupil_folder, 'eye.diameter.npy'), diameter)        
+#     # # Save the data with blinks to a CSV file
+#     # df_with_blinks = pd.DataFrame(data_with_blinks)
+#     # df_with_blinks.to_csv(os.path.join(measure_pupil_folder, 'diameter_blinks.npy'), index=False)
+
+#     # Create the plots
+#     for s in range(3):
+#         mini = np.min(data[blinks == False, s])
+#         maxi = np.max(data[blinks == False, s])
+#         rng = maxi - mini
+#         mini = mini - 0.02 * rng
+#         maxi = maxi + 0.02 * rng
+
+#         ax[s].plot(data[:, s], 'k')
+#         ax[s].set_ylim([mini, maxi])
+#         ax[s].set_ylabel(names[s])
+
+#         if len(bl_starts) > 0:
+#             for start, stop in zip(bl_starts, bl_stops):
+#                 ax[s].fill_betweenx([mini, maxi], start, stop, color='gray', alpha=0.5)
+    
+#     ax[-1].set_xlabel('frames')
+
+#     # Save the plot
+#     plt.savefig(os.path.join(measure_pupil_folder, "xyPos_diameter_blinks.png"))
+
+#%% Plot trace of diameter and center coordinates with blinks and save files 
+
+def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, isInterpolated_indices, destBaseFolder):
     """
     Generates plots for eye tracking data and saves them along with the data in specified formats.
-
-    This function creates plots from eye tracking data (center x, center y, diameter) and highlights the 
-    periods where blinks are detected. It also saves the eye tracking data and blinks information in both 
-    .npy and .csv formats in a structured directory.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the file containing the raw data used for generating eye tracking information.
-    data : ndarray
-        Array containing eye tracking data, specifically center x, center y, and diameter values.
-    blinks : ndarray
-        Boolean array indicating the frames where blinks are detected.
-    bl_starts : list
-        List containing the start frames of each blink.
-    bl_stops : list
-        List containing the stop frames of each blink.
-    destBaseFolder : str
-        Base directory where the output files and plots will be saved.
-
-    Notes
-    -----
-    - The function creates a new directory within the destination folder to store the output files and plots.
-    - The plots generated show the eye tracking data over time and mark the periods of blinks with a gray overlay.
-    - The eye tracking data is saved in .npy format, and the data including blink information is saved in a .csv file.
-    - The plots are saved as a single .png file showing all three metrics (center x, center y, diameter) across different subplots.
     """
 
-    # Create the subplots
-    fig, ax = plt.subplots(3, 1, figsize=(15, 12))
-
-    # Combine the data into a single array and give it column names
-    names = ['center x', 'center y', 'diameter']
-    
-    # Create destination folder for pupil diameter files: 
-        
+    # Setup for directory creation
     session_folder = os.path.basename(os.path.dirname(file_path))
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(file_path)))
 
@@ -553,44 +749,54 @@ def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, destBaseFol
     measure_pupil_folder = os.path.join(base_dir, "xyPos_diameter", session_folder)
     if not os.path.exists(measure_pupil_folder):
         os.makedirs(measure_pupil_folder)
-    
-    # Create a copy of the data accounting for blinks
-    data_with_blinks = np.copy(data)
-    for i in range(len(data_with_blinks)):
-        if blinks[i]:
-            data_with_blinks[i, :] = np.nan
-    # Create two separate arrays for xyPos and diameter
-    xyPos = data_with_blinks[:, :2]
+    # Ensure the directory exists
+    if not os.path.exists(base_dir):
+        os.makedirs(base_dir)
+
+    # Handle blinks in data
+    blinks_array = blinks.to_numpy()[:, None]  # Convert and reshape to 2D for compatibility with np.where
+    data_with_blinks = np.where(blinks_array, np.nan, data) # replace the blinks indices with nan values
+
+    eye_xyPos = data_with_blinks[:, :2]
     diameter = data_with_blinks[:, 2]
-    
-    # Save xyPos and diameter as .npy files
-    np.save(os.path.join(measure_pupil_folder, 'eye.xyPos.npy'), xyPos)
-    np.save(os.path.join(measure_pupil_folder, 'eye.diameter.npy'), diameter)        
-    # # Save the data with blinks to a CSV file
-    # df_with_blinks = pd.DataFrame(data_with_blinks)
-    # df_with_blinks.to_csv(os.path.join(measure_pupil_folder, 'diameter_blinks.npy'), index=False)
+    # Save modified data as .npy
+    np.save(os.path.join(measure_pupil_folder, 'eye.xyPos.npy'), eye_xyPos)
+    np.save(os.path.join(measure_pupil_folder, 'eye.diameter.npy'), diameter)
+    np.save(os.path.join(measure_pupil_folder, 'eye.isInterpolated.npy'), isInterpolated_indices)
 
-    # Create the plots
-    for s in range(3):
-        mini = np.min(data[blinks == False, s])
-        maxi = np.max(data[blinks == False, s])
-        rng = maxi - mini
-        mini = mini - 0.02 * rng
-        maxi = maxi + 0.02 * rng
 
-        ax[s].plot(data[:, s], 'k')
-        ax[s].set_ylim([mini, maxi])
-        ax[s].set_ylabel(names[s])
+    # Plotting
+    names = ['Center X', 'Center Y', 'Diameter']
+    fig, axs = plt.subplots(3, 1, figsize=(15, 12), sharex=True)
 
-        if len(bl_starts) > 0:
+    for i, ax in enumerate(axs):
+        # Skip plotting if all values are NaN
+        if np.all(np.isnan(data_with_blinks[:, i])):
+            ax.text(0.5, 0.5, f'{names[i]} data not available', 
+                    horizontalalignment='center', verticalalignment='center', 
+                    transform=ax.transAxes)
+            ax.set_ylabel(names[i])
+            continue
+
+        # Calculate limits to avoid NaN issues
+        valid_data = data_with_blinks[~np.isnan(data_with_blinks[:, i]), i]
+        if len(valid_data) > 0:  # Check if there are any valid data points
+            min_val, max_val = np.nanmin(valid_data), np.nanmax(valid_data)
+            range_val = max_val - min_val
+            ax.set_ylim([min_val - 0.1 * range_val, max_val + 0.1 * range_val])
+
+            # Plot data
+            ax.plot(data[:, i], 'k', label=names[i])
+            ax.set_ylabel(names[i])
+
+            # Highlight blinks
             for start, stop in zip(bl_starts, bl_stops):
-                ax[s].fill_betweenx([mini, maxi], start, stop, color='gray', alpha=0.5)
-    
-    ax[-1].set_xlabel('frames')
+                ax.fill_betweenx(ax.get_ylim(), start, stop, color='gray', alpha=0.5)
 
-    # Save the plot
+    axs[-1].set_xlabel('Frames')
+    plt.tight_layout()
     plt.savefig(os.path.join(measure_pupil_folder, "xyPos_diameter_blinks.png"))
-
+    plt.close()
 
 #%% convert diameter pixel values to mm
 

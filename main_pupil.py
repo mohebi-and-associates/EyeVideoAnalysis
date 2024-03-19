@@ -3,20 +3,10 @@
 
 #%%
 
-
 import os
-
-# working_directory_path = "C:\dev\workspaces"
-# os.chdir(working_directory_path)
-# print(os.getcwd())
-
 import pandas as pd
 import deeplabcut
-
-
-# set console working directory so it doesn't complain about suite2p that is imported in user_defs
-
-# from Data import user_defs
+import numpy as np
 import user_defs
 import analyse_videos
 import measure_pupil
@@ -114,24 +104,25 @@ for i in range(len(database)):
             if eye_video_path in plot_videos:
                 deeplabcut.plot_trajectories(config, [eye_video_path], shuffle=shuffle, destfolder=dest_folder)
             if dest_folder == dlc_video_folder:
-                analyse_videos.copy_non_video_files(dlc_video_folder,dlc_folder)
-
-    pupilAnalysisFiles = measure_pupil.read_dataentry_produce_directories(database.loc[i], destBaseFolder)
-        
+                analyse_videos.copy_non_video_files(dlc_video_folder,dlc_folder)        
     if measure_pupil_bool:
         
-        for pupilAnalysisFile in pupilAnalysisFiles:
-            df, width, height, center_x, valid = measure_pupil.process_raw_data(pupilAnalysisFile, MIN_CERTAINTY=0.6, plot=False)
-            F = measure_pupil.estimate_height_from_width_pos(width, height, center_x, valid, plot=False)
-            center_y_adj, height_adj = measure_pupil.adjust_center_height(df, F, width, height, center_x, plot=False)
-            blinks, bl_starts, bl_stops = measure_pupil.detect_blinks(df, width, center_x, center_y_adj, height_adj, print_out=True, plot=False)
-            center_x, center_y_adj, height_adj = measure_pupil.apply_medfilt(center_x, center_y_adj, height_adj, SMOOTH_SPAN = 5)
-            data, center, diameter  = measure_pupil.adjust_for_blinks(center_x, center_y_adj, height_adj, width, blinks,plot=False)
-            measure_pupil.plot_and_save_data(pupilAnalysisFile, data, blinks, bl_starts, bl_stops, destBaseFolder)
-        for eye_video_path in eyeVideoPaths:
-            measure_pupil.analyse_HH_video(eye_video_path, destBaseFolder, hh_model_path, num_frames=10)
+        pupilAnalysisFiles = measure_pupil.read_dataentry_produce_directories(database.loc[i], destBaseFolder)
+        aggregated_data = measure_pupil.process_raw_data_multiple(pupilAnalysisFiles, MIN_CERTAINTY = 0.6, plot=False)    
+        F = measure_pupil.estimate_height_from_width_pos_all(aggregated_data, plot=False)
+        
+        if F is not None:
+            for pupilAnalysisFile in pupilAnalysisFiles:
+                df, width, height, center_x, valid = measure_pupil.process_raw_data(pupilAnalysisFile, MIN_CERTAINTY=0.6, plot=False)
+                center_y_adj, height_adj, isEstimated_indices = measure_pupil.adjust_center_height(df, F, width, height, center_x, plot=False)
+                blinks, bl_starts, bl_stops = measure_pupil.detect_blinks(df, width, center_x, center_y_adj, height_adj, print_out=True, plot=False)
+                center_x, center_y_adj, height_adj = measure_pupil.apply_medfilt(center_x, center_y_adj, height_adj, SMOOTH_SPAN = 5)
+                data, center, diameter  = measure_pupil.adjust_for_blinks(center_x, center_y_adj, height_adj, width, blinks, plot=False)
+                measure_pupil.plot_and_save_data(pupilAnalysisFile, data, blinks, bl_starts, bl_stops, isEstimated_indices, destBaseFolder)
+                
+                for eye_video_path in eyeVideoPaths:
+                    measure_pupil.analyse_HH_video(eye_video_path, destBaseFolder, hh_model_path, num_frames=10)
     if crop_videos_bool:
-        # name, date, exp_numbers, eyeVideoPaths, plot_videos, create_videos = analyse_videos.read_dataentry_produce_video_dirs(database.loc[i], rawDataBaseFolder) # can be deleted if absence does not cause any problems 
         for eye_video_path, pupilAnalysisFile in zip(eyeVideoPaths, pupilAnalysisFiles):
             dlc_folder, dlc_video_folder, shuffle, config = analyse_videos.create_dlc_ops(eye_video_path, destBaseFolder, videoDestBaseFolder, rawDataBaseFolder, eye_model_path, create_video=create_video_flag)
             roi_coordinates = crop_videos.read_roi_coordinates_from_dlc_folder(eye_video_path, videoDestBaseFolder, rawDataBaseFolder)
@@ -140,8 +131,9 @@ for i in range(len(database)):
 
 #%% check pupil npy files
 
-# loaded_xyPos = np.load(r"C:\Users\Experimenter\Deeplabcut_files\all_pupil_videos_processed\Name1\2022-01-01\4\measure_pupil\eye.xyPos.npy")
-# loaded_diameter = np.load(r"C:\Users\Experimenter\Deeplabcut_files\all_pupil_videos_processed\Name1\2022-01-01\4\measure_pupil\eye.diameter.npy")
+# loaded_xyPos = np.load(r"Q:\dlc_test_videos_short\videos_analysed\Io\2023-02-13\pupil\xyPos_diameter\3\eye.xyPos.npy")
+# loaded_diameter = np.load(r"Q:\dlc_test_videos_short\videos_analysed\Io\2023-02-13\pupil\xyPos_diameter\3\eye.diameter.npy")
+# loaded_isEstimated = np.load(r"Q:\dlc_test_videos_short\videos_analysed\Io\2023-02-13\pupil\xyPos_diameter\3\eye.isEstimated.npy")
 
 #%% check if tensorflow recognises GPU
 

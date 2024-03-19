@@ -29,14 +29,14 @@ def define_directories():
         # 'destBaseFolder': r"Z:\ProcessedData",
         # 'videoDestBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos"
         
-        "DLCeyeModelDir": r"C:\\Users\\Experimenter\\Deeplabcut_files\\MousePupil-SchroederLab-2023-08-02",
+        "DLCeyeModelDir": r"C:\Users\Experimenter\Deeplabcut_files\MousePupil-SchroederLab-2023-08-02", # "Q:\MousePupil-SchroederLab-2023-08-02",
         "DLChhModelDir": r"C:\Users\Experimenter\Desktop\HeadplateHolder-SchroederLab-2024-01-29",
         'DLCdataDefFile': r"C:\dev\workspaces\EyeVideoAnalysis\pupil_analysis_config.csv", #r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\pupil_analysis_config.csv",
         'rawDataBaseFolder': r"Z:\RawData",
-        # 'rawDataBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos",
-        # 'destBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos_analysed",
+        # 'rawDataBaseFolder': r"Q:\dlc_test_videos_short",
+        # 'destBaseFolder': r"Q:\dlc_test_videos_short\videos_analysed",
         'destBaseFolder': r"Z:\ProcessedData",
-        'videoDestBaseFolder': r"C:\Users\Experimenter\Deeplabcut_files\pupil_analysis\videos_analysed" #can also be set to None
+        'videoDestBaseFolder': r"Q:\dlc_labelled_videos" #can also be set to None
         
     }
     return directoryDb
