@@ -180,3 +180,76 @@ def copy_non_video_files(src_folder, dst_folder):
         elif not src_path.endswith('.mp4'):  # Copy if not an MP4 file
             if not os.path.exists(dst_path):
                 shutil.copy2(src_path, dst_path)
+# %% 
+def delete_labelled_videos(labelled_video_folder):
+    """
+    Deletes all labelled videos in the specified root folder and its structured subfolders that match the given pattern.
+    
+    Parameters:
+        labelled_video_folder (str): Path to the root folder where labelled videos are stored.
+    """
+    pattern="*_labeled.mp4"
+    # Ensure the root path is in the correct format
+    labelled_video_folder = os.path.abspath(labelled_video_folder)
+    
+    # Construct the optimized search pattern based on the typical directory structure
+    # Example: Z:/ProcessedData/Quille/*/pupil/dlc/*/*.mp4
+    search_pattern = os.path.join(
+        labelled_video_folder,       # Root folder
+        '*',                         # Animal name
+        '*',                         # Date folder (e.g., 2023-07-24)
+        'pupil',                     # 'pupil' subfolder
+        'dlc',                       # 'dlc' subfolder
+        '*',                         # Experiment number folder (e.g., 1)
+        pattern                      # Video file pattern
+    )
+    
+    # Find all matching videos using the optimized search pattern
+    videos_to_delete = glob.glob(search_pattern)
+    
+    # If no videos are found, notify and exit
+    if not videos_to_delete:
+        print("No labelled videos found matching the pattern.")
+        return
+    
+    # Display the list of videos to delete
+    print(f"{len(videos_to_delete)} labelled videos  have been found and will be deleted if confirmed:")
+    for video in videos_to_delete:
+        print(video)
+    
+    # Ask for user confirmation
+    confirm_delete = input(f"Do you want to delete these {len(videos_to_delete)} videos? (yes/no): ").strip().lower()
+    
+    if confirm_delete in ["yes", "y"]:
+        deleted_files = []
+        failed_files = []
+        
+        for video in videos_to_delete:
+            try:
+                os.remove(video)
+                print(f"Deleted: {video}")
+                deleted_files.append(video)
+            except Exception as e:
+                print(f"Failed to delete {video}. Reason: {e}")
+                failed_files.append((video, str(e)))
+        
+        # Summary
+        print("\nDeletion Summary:")
+        print(f"Successfully deleted {len(deleted_files)} file(s).")
+        if failed_files:
+            print(f"Failed to delete {len(failed_files)} file(s):")
+            for file, reason in failed_files:
+                print(f" - {file}: {reason}")
+    else:
+        print("Deletion cancelled.")
+
+# Example Usage:
+if __name__ == "__main__":
+    # Specify the path to the root folder containing labelled videos and subfolders
+    # Use raw string to handle backslashes or use forward slashes
+    labelled_video_folder = r"Z:\ProcessedData"  # Replace with your actual path
+    
+    # Call the function to delete labelled videos
+    delete_labelled_videos(labelled_video_folder)
+
+

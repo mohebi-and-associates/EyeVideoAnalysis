@@ -191,6 +191,7 @@ def process_raw_data(file_path, MIN_CERTAINTY, plot=False):
    height = df[("ventralpupil", "y")] - df[("dorsalpupil", "y")]
    center_x = df[("leftpupil", "x")] + 0.5 * width
    valid = (df.loc[:, (slice(None), "likelihood")] > MIN_CERTAINTY).all(axis=1)
+   center_y_eyelid = (df[("righteyelid"), "y"] + df[("lefteyelid"), "y"])/2
    
    # Check if height values are valid
    height_valid = (df[("ventralpupil", "likelihood")] > MIN_CERTAINTY) & (df[("dorsalpupil", "likelihood")] > MIN_CERTAINTY)
@@ -216,7 +217,7 @@ def process_raw_data(file_path, MIN_CERTAINTY, plot=False):
         plt.title('Valid raw data')
         plt.show()
         
-   return df, width, height, center_x, valid
+   return df, width, height, center_x, valid, center_y_eyelid
 
 # df = process_raw_data(r"Z:\ProcessedData\FG003\2023-03-10\4\dlc\Video1DLC_resnet101_MousePupilAug2shuffle1_440000.csv", MIN_CERTAINTY, plot=False)
 
@@ -736,7 +737,7 @@ def adjust_for_blinks(center_x, center_y_adj, height_adj, width, blinks, plot=Tr
 
 #%% Plot trace of diameter and center coordinates with blinks and save files 
 
-def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, isInterpolated_indices, destBaseFolder):
+def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, isInterpolated_indices, center_y_eyelid, destBaseFolder):
     """
     Generates plots for eye tracking data and saves them along with the data in specified formats.
     """
@@ -763,6 +764,7 @@ def plot_and_save_data(file_path, data, blinks, bl_starts, bl_stops, isInterpola
     np.save(os.path.join(measure_pupil_folder, 'eye.xyPos.npy'), eye_xyPos)
     np.save(os.path.join(measure_pupil_folder, 'eye.diameter.npy'), diameter)
     np.save(os.path.join(measure_pupil_folder, 'eye.isInterpolated.npy'), isInterpolated_indices)
+    np.save(os.path.join(measure_pupil_folder, 'eye.center_y_eyelid.npy'), center_y_eyelid)
 
 
     # Plotting
