@@ -13,14 +13,14 @@ import glob
 
 #%% load directories and database
 
-dirs = user_defs.define_directories()
 
-eye_model_path = dirs["DLCeyeModelDir"]
-hh_model_path = dirs["DLChhModelDir"] #Headplate Holder DLC model
-csvDir = dirs["DLCdataDefFile"]
-rawDataBaseFolder = dirs["rawDataBaseFolder"]
-destBaseFolder = dirs["destBaseFolder"]
-videoDestBaseFolder = dirs["videoDestBaseFolder"]
+eye_model_path = r"C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02"
+#hh_model_path = dirs["DLChhModelDir"] #Headplate Holder DLC model
+csvDir = r"C:\GitHub\EyeVideoAnalysis\pupil_analysis_config.csv"
+
+rawDataBaseFolder = r"Y:\Data\IM-1024\2025-04-22\behavior\randomRewards"
+destBaseFolder = r"Y:\Data\IM-1024\2025-04-22\behavior\randomRewards"
+videoDestBaseFolder = r"Y:\Data\IM-1024\2025-04-22\behavior\randomRewards"
 
 database = pd.read_csv(
     csvDir,
@@ -125,7 +125,7 @@ for i in range(len(database)):
             roi_coordinates = crop_videos.read_roi_coordinates_from_dlc_folder(eye_video_path, videoDestBaseFolder, rawDataBaseFolder)
             crop_videos.process_video(eye_video_path, roi_coordinates, dlc_video_folder)   
 # %% delete labeled videos
-
+print("Done...")
 # labelled_video_folder = r"Z:\ProcessedData"
 # analyse_videos.delete_labelled_videos(labelled_video_folder)
 #%% check files

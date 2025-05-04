@@ -1,0 +1,149 @@
+# Project definitions (do not edit)
+Task: MousePupil
+scorer: SchroederLab
+date: Aug2
+multianimalproject: false
+identity:
+
+
+# Project path (change when moving around)
+project_path: C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02
+
+
+# Default DeepLabCut engine to use for shuffle creation (either pytorch or tensorflow)
+engine: pytorch
+
+
+# Annotation data set configuration (and individual video cropping parameters)
+video_sets:
+  ? C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\1._Volumes_data_RawData_Bellinda_2022-07-25_1_Video0.avi
+  : crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\2._Volumes_data_RawData_Eos_2022-10-20_2_Video0.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\3._Volumes_data_RawData_FG001_2022-05-31_1_Video3.avi:
+    crop: 0, 1440, 0, 1080
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\4._Volumes_data_RawData_FG002_2022-10-26_2_Video1.avi:
+    crop: 0, 1440, 0, 1080
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\5._Volumes_data_RawData_Hedes_2022-03-01_7_Video0.avi:
+    crop: 0, 1440, 0, 1080
+  ? C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\6._Volumes_data_RawData_SS112_Reward_2022-08-23_2_Video1.avi
+  : crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Elias2022-09-06.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\eye3.avi:
+    crop: 0, 1440, 0, 1080
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\FG0032023-03-118.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\FG0032023-03-133.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\FG0032023-03-136.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\FG0032023-03-147.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\FG0042023-06-125.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Giuseppina2023-01-243.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Giuseppina2023-02-223.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Glaucus2022-03-281.avi:
+    crop: 0, 1440, 0, 1080
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Glaucus2022-08-103.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Glaucus2022-11-101.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Io2023-02-152.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Iris2022-06-172.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Iris2022-10-121.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Janus2023-01-181.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Ladon2023-02-21.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Morpheus2023-02-21.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Natalia2023-01-183.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Oephelia2023-07-211.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\Quille2023-07-12.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\SS1092022-04-071.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\SS1132022-12-074.avi:
+    crop: 0, 720, 0, 540
+  C:\GitHub\EyeVideoAnalysis\MousePupil-SchroederLab-2023-08-02\videos\SS1132022-12-141.avi:
+    crop: 0, 720, 0, 540
+bodyparts:
+- nose
+- leftpupil
+- dorsalpupil
+- rightpupil
+- ventralpupil
+- lefteyelid
+- dorsaleyelid
+- righteyelid
+- ventraleyelid
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+    # Fraction of video to start/stop when extracting frames for labeling/refinement
+
+
+# Fraction of video to start/stop when extracting frames for labeling/refinement
+start: 0
+stop: 1
+numframes2pick: 20
+
+
+# Plotting configuration
+skeleton:
+- - bodypart1
+  - bodypart2
+- - objectA
+  - bodypart3
+skeleton_color: black
+pcutoff: 0.6
+dotsize: 1
+alphavalue: 0.7
+colormap: rainbow
+
+
+# Training,Evaluation and Analysis configuration
+TrainingFraction:
+- 0.95
+iteration: 0
+default_net_type: resnet_50
+default_augmenter: default
+snapshotindex: -1
+detector_snapshotindex:
+batch_size: 8
+detector_batch_size:
+
+
+# Cropping Parameters (for analysis and outlier frame detection)
+cropping: false
+#if cropping is true for analysis, then set the values here:
+x1: 0
+x2: 640
+y1: 277
+y2: 624
+
+
+# Refinement configuration (parameters from annotation dataset configuration also relevant in this stage)
+corner2move2:
+- 50
+- 50
+move2corner: true
+
+
+# Conversion tables to fine-tune SuperAnimal weights
+SuperAnimalConversionTables:

@@ -74,24 +74,20 @@ def produce_directories(name, date, exp_numbers, analyze_video, plot_trajectorie
     for exp_number in exp_numbers:
         if exp_number.strip().lower() == "all":
             folder_path = os.path.join(rawDataBaseFolder, name, date)
-            eye_avi_files = glob.glob(os.path.join(folder_path, "*", "*.avi"))
+            folder_path = os.path.abspath(rawDataBaseFolder)  # Ensure the path is absolute
+            eye_video_files = glob.glob(os.path.join(folder_path, "*.avi")) + glob.glob(os.path.join(folder_path, "*.mp4"))
             print(f"Looking in folder: {folder_path}")
-            print(f"Found files: {eye_avi_files}")
+            print(f"Found files: {eye_video_files}")
         else:
             folder_path = os.path.join(rawDataBaseFolder, name, date, exp_number.strip())
-            eye_avi_files = glob.glob(os.path.join(folder_path, "*.avi"))
+            eye_video_files = glob.glob(os.path.join(folder_path, "*.avi")) + glob.glob(os.path.join(folder_path, "*.mp4"))
             print(f"Looking in folder: {folder_path}")
-            print(f"Found files: {eye_avi_files}")
+            print(f"Found files: {eye_video_files}")
 
-        for file in eye_avi_files:
-            match = re.match(r"Video(\d)\.avi", os.path.basename(file)) #if the videofile name is Video# where # is a number
-            # match = re.match(r"Video(\d+).*\.avi", os.path.basename(file)) # if the name of the file is not simply Video#
 
-            if match:
-                digit = int(match.group(1)) #if the videofile name is Video# where # is a number
-                if digit >= 0 and digit <= 9: 
-                    eyeVideoPaths.append(file)
-                
+        for file in eye_video_files:
+            eyeVideoPaths.append(file)
+
     print("eyeVideoPaths:", eyeVideoPaths)
     if not eyeVideoPaths:
         raise ValueError("No eye video files found in the directories.")
