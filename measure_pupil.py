@@ -83,6 +83,7 @@ def produce_directories(name, date, exp_numbers, analyze_video, plot_trajectorie
     for exp_number in exp_numbers:
         if exp_number.strip().lower() == "all":
             dlc_folder_path = os.path.join(destBaseFolder, name, date, "pupil", "dlc")
+            dlc_folder_path = os.path.join(destBaseFolder)
             dlc_csv_files = glob.glob(os.path.join(dlc_folder_path, "*", "*.csv"))
             print("Checking in folder:", dlc_folder_path)
             print("Files found:", dlc_csv_files)
